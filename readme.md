@@ -2,7 +2,7 @@
 
 - module statsKeeperBasic.py
 Basic module providing tools for key-word extraction. Doesn't use any NLP tools only statistics. No stemming, no lemmatization.
-	class ```StatsKeeperBasic```
+- class ```StatsKeeperBasic```
 	inner class ```Document``` 
 		properties :
 		- ```text```
