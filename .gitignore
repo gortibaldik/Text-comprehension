@@ -1,0 +1,2 @@
+# do not include anything from venv directory
+venv/
