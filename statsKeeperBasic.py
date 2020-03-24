@@ -1,6 +1,6 @@
 from textblob import TextBlob
 import math
-import os
+import os   
 
 class StatsKeeperBasic:
     class Document :

@@ -1,7 +1,21 @@
 # Keyword extraction using TF-IDF
 
-- module statsKeeperBasic.py
-Basic module providing tools for key-word extraction. Doesn't use any NLP tools only statistics. No stemming, no lemmatization.
+- module ```base.py```
+	- the main module for testing functionality of tf-idf on dataset
+- module ```dataset_loader.py```
+	- not finalized yet, at mean time it'll implement download and processing of dataset from http://archives.textfiles.com/stories.zip
+	right now you need to specify location of stories.zip file on your disc in constructor of ```Dataset``` class
+- module ```document_preprocessor.py```
+	- main module for text preprocessing
+	- with use of libraries : ```nltk```, ```num2words```, ```numpy``` performs basic text preprocessing steps such as 
+		- lowercasing
+		- removing stop words
+		- stemming
+- module ```document_vectors.py```
+	- loads preprocessed text and creates tf_idf stats for each document loaded
+	- inner class ```Document``` holding stats for each document separately
+- module ```statsKeeperBasic.py```
+- Basic module providing tools for key-word extraction. Doesn't use any NLP tools only statistics. No stemming, no lemmatization.
 - class ```StatsKeeperBasic```
 	- inner class ```Document``` 
 		-properties :
