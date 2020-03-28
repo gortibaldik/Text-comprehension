@@ -6,9 +6,10 @@
 
 import os
 import re
-#import urllib.request
-#import zipfile
-#import sys
+import urllib.request
+import zipfile
+import sys
+from pathlib import Path, PurePosixPath
 from collections import namedtuple as nt
 
 # file_names - dictionary of filenames
@@ -27,27 +28,38 @@ class Dataset :
 
     def __init__(self, relativePathToStories = 'test_files\\stories') :
         # next step - dataset will download stories.zip and with zipfile it'll extract all the needed files
-        #path = os.path.basename(self._URL)
-        #if not os.path.exists(path) :
-        #    print("Downloading dataset {}...".format(path), file=sys.stderr)
-        #    urllib.request.urlretrieve(self._URL, filename=path)
+        path = os.path.basename(self._URL)
+        if not os.path.exists(path) :
+            print("Downloading dataset {}...".format(path), file=sys.stderr)
+            urllib.request.urlretrieve(self._URL, filename=path)
         
-        folders = [x[0] for x in os.walk(os.path.join(str(os.getcwd()),relativePathToStories))]
+        with zipfile.ZipFile(path, "r") as zip_file :
+            index_files = [ file_name for file_name in zip_file.namelist() if os.path.basename(file_name) == "index.html"]
 
-        self._fns = {}
-        self._tts = {} # text_title_tuple
-        for folder in folders :
-            with open(os.path.join(folder, 'index.html'), "r") as i_f :
-                indices = i_f.read().strip()
-            file_names = re.findall('><A HREF="(.*)">[^<]*</A> ', indices)
-            file_titles = re.findall('<BR><TD> (.*)\n', indices)
+            self._fns = {}
+            self._tts = {} # text_title_tuple
+            for index_file in index_files :
+                with zip_file.open(index_file, "r") as i_f :
+                    indices = i_f.read().decode("utf-8").strip()
 
-            if len(file_names) != len(file_titles) :
-                raise Exception("len(file_names) != len(file_titles)")
+                input("read indices from {}".format(index_file))
+                file_names = re.findall('><A HREF="(.*)">[^<]*</A> ', indices)
+                file_titles = re.findall('<BR><TD> (.*)\n', indices)
 
-            ttt = nt("text_title_tuple", ["text", "title"])
-            for file_name, title in zip(file_names, file_titles) :
-                path = os.path.join(folder, file_name)
-                self._fns[path] =  title
-                with open(path, "r") as file :
-                    self._tts[path] = ttt._make([file.read(), title])
+                if len(file_names) != len(file_titles) :
+                    raise Exception("len(file_names) != len(file_titles)")
+
+                ttt = nt("text_title_tuple", ["text", "title"])
+                path_index_file = Path(index_file)
+                folder = path_index_file.parents[0]
+                print("current folder : {}".format(folder))
+                for file_name, title in zip(file_names, file_titles) :
+                    path = PurePosixPath(folder / file_name)
+                    self._fns[path] =  title
+                    try :
+                        with zip_file.open(str(path), "r") as file :
+                            to_insert = ttt._make([file.read().decode("iso-8859-1"), title])
+                    except :
+                        print("ERROR IN DECODING {}".format(path))
+
+                    self._tts[str(path)] = to_insert
