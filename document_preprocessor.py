@@ -1,4 +1,5 @@
 import numpy
+import string
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
@@ -86,11 +87,7 @@ class DocumentPreprocessor :
 
     def _remove_punctuation(self, text) :
         symbols = "!\"#$%&()*+-./:;<=>?@[\]^_`{|}~\n"
-        for i in range(len(symbols)):
-            text = numpy.char.replace(text, symbols[i], ' ')
-            text = numpy.char.replace(text, "  ", " ")
-        text = numpy.char.replace(text, ',', '')
-        return str(text)
+        return str(text.translate(str.maketrans('','',symbols)))
 
     def _remove_apostrophe(self, text) :
         return str(numpy.char.replace(text, "'", " "))

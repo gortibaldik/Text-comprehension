@@ -41,8 +41,7 @@ class Dataset :
             for index_file in index_files :
                 with zip_file.open(index_file, "r") as i_f :
                     indices = i_f.read().decode("utf-8").strip()
-
-                input("read indices from {}".format(index_file))
+                    
                 file_names = re.findall('><A HREF="(.*)">[^<]*</A> ', indices)
                 file_titles = re.findall('<BR><TD> (.*)\n', indices)
 
