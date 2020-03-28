@@ -7,3 +7,6 @@ test_files/
 
 # do not include downloaded zip archives
 *.zip
+
+# do not include __pycache__
+__pycache__/
