@@ -1,24 +1,26 @@
 import numpy
-import string
+import os
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
 from num2words import num2words
 from collections import namedtuple as nt
 
-# in constructor we choose which preprocessing will be applied to loaded documents
-class DocumentPreprocessor :
 
-    # probably I'll change the defaults to True
-    def __init__(self, 
-            lower_case=False, 
-            remove_stop_words=False, 
-            remove_punctuation=False, 
-            remove_apostrophes=False, 
-            remove_single_characters=False, 
-            stemming = False, 
-            lemmatization=False, 
-            number_converting=False) :
+class DocumentPreprocessor:
+    _STOP_WORDS = stopwords.words('english')
+    _NAMED_TUPLE = nt("document", ["title", "text"])
+
+    # initialize all the flags used for document preprocessing
+    def __init__(self,
+                 lower_case=False,
+                 remove_stop_words=False,
+                 remove_punctuation=False,
+                 remove_apostrophes=False,
+                 remove_single_characters=False,
+                 stemming=False,
+                 lemmatization=False,
+                 number_converting=False):
         self._lc = lower_case
         self._sw = remove_stop_words
         self._p = remove_punctuation
@@ -27,83 +29,119 @@ class DocumentPreprocessor :
         self._st = stemming
         self._lem = lemmatization
         self._nc = number_converting
-        self._stop_words = stopwords.words('english')
         self._stemmer = PorterStemmer()
-    
-    def preprocess_document(self, text, title) :
-        if self._lc : 
-            text = self._lower(text)
-            title = self._lower(title)
-        if self._p :
-            text = self._remove_punctuation(text)
-            title = self._remove_punctuation(title)
+        self._file_suffix = self._create_parameters_suffix()
 
-        preprocessed_text = self._preprocess(text)
-        preprocessed_title = self._preprocess(title)
+    # traverse through document and apply all the
+    # preprocessing steps specified in the constructor
+    # for faster working it may save preprocessed documents
+    # to disc (to the same directory as the original dataset)
+    def preprocess_document(self, path, text, title):
+        # the adequately preprocessed document doesn't exist yet
+        if not os.path.exists(self._create_parameters_filename(path)):
+            arr = [title, text]
+        # document has already been processed
+        else:
+            arr = [title]
 
-        if self._st :
-            preprocessed_text = self._stem(preprocessed_text)
-            preprocessed_title = self._stem(preprocessed_title)
+        for n, item in enumerate(arr):
+            if self._lc:  # make the text lowercase
+                item = DocumentPreprocessor._lower(item)
+            if self._p:  # remove punctuation
+                item = DocumentPreprocessor._remove_punctuation(item)
 
-        type_of_tuple = nt("document", ["title", "p_title", "p_text"])
-        return type_of_tuple._make([title, word_tokenize(preprocessed_title), word_tokenize(preprocessed_text)])
-        
+            def sub_preprocess(_item):
+                tokenized = word_tokenize(_item)
+                _item = ""
+                for token in tokenized:
+                    if self._sw:  # remove stop words
+                        token = DocumentPreprocessor._erase_stopword(token)
+                    if self._sc:  # remove short words
+                        token = self._erase_short_length(token)
+                    if self._nc:  # rename numbers
+                        token = self._try_convert_number(token)
+                    if len(token) > 0:
+                        _item += " " + token
 
+                return str(_item)
 
+            item = sub_preprocess(item)
+            if self._a:
+                item = DocumentPreprocessor._remove_apostrophe(item)
 
-    @property
-    def documents(self) :
-        return self._documents
+            if self._st:  # stem the verbs and conjugations
+                item = self._stem(item)
+                item = sub_preprocess(item)
 
-    def _stem(self, text) :
+            arr[n] = item
+
+        # save for future use
+        if len(arr) == 2:
+            preprocessed_text = arr[1]
+            with open(self._create_parameters_filename(path), 'w') as file:
+                for w in preprocessed_text: file.write(w)
+        # if the text is already saved, load it from disc
+        else:
+            with open(self._create_parameters_filename(path), 'r') as file:
+                preprocessed_text = file.read()
+        preprocessed_title = arr[0]
+        return DocumentPreprocessor._NAMED_TUPLE._make([word_tokenize(preprocessed_title), word_tokenize(preprocessed_text)])
+
+    # stem all the words in the text
+    def _stem(self, text):
         tokenized_text = word_tokenize(text)
         stemmed = ""
-        for token in tokenized_text :
+        for token in tokenized_text:
             stemmed += " " + self._stemmer.stem(token)
 
         stemmed = self._remove_punctuation(stemmed)
-        stemmed = self._preprocess(stemmed)
         return str(stemmed)
 
-    def _preprocess(self, text) :
-        tokenized_text = word_tokenize(text)
-        preprocessed = ""
-        for token in tokenized_text :
-            if self._sw :
-                token = self._check_stopWords(token)
-            if self._sc :
-                token = self._check_length(token)
-            if self._nc :
-                token = self._check_numbers(token)
-            if len(token) > 0 :
-                preprocessed += " " + token
+    def _create_parameters_filename(self, path):
+        wo_ext, ext = os.path.splitext(path)
+        file_name = wo_ext + self._file_suffix
+        return file_name + ext
 
-        if self._a :
-            preprocessed = self._remove_apostrophe(preprocessed)
-        return str(preprocessed)
+    def _create_parameters_suffix(self):
+        suffix = "_"
+        suffix += "lc" if self._lc else ""
+        suffix += "sw" if self._sw else ""
+        suffix += "p" if self._p else ""
+        suffix += "a" if self._a else ""
+        suffix += "sc" if self._sc else ""
+        suffix += "st" if self._st else ""
+        suffix += "lem" if self._lem else ""
+        suffix += "nc" if self._nc else ""
+        return suffix
 
-    def _lower(self, text) :
+    @staticmethod
+    def _lower(text):
         return str(numpy.char.lower(text))
 
-    def _remove_punctuation(self, text) :
-        symbols = "!\"#$%&()*+-./:;<=>?@[\]^_`{|}~\n"
-        return str(text.translate(str.maketrans('','',symbols)))
+    @staticmethod
+    def _remove_punctuation(text):
+        symbols = "!\"#$%&()*+-./:;<=>?@[\\]^_`{|}~\n"
+        return str(text.translate(str.maketrans('', '', symbols)))
 
-    def _remove_apostrophe(self, text) :
+    @staticmethod
+    def _remove_apostrophe(text):
         return str(numpy.char.replace(text, "'", " "))
 
-    def _check_stopWords(self, word) :
-        if word in self._stop_words :
-            word = ""
-        return word
-    
-    def _check_length(self, word) :
-        if len(word) <= 1 :
+    @staticmethod
+    def _erase_stopword(word):
+        if word in DocumentPreprocessor._STOP_WORDS:
             word = ""
         return word
 
-    def _check_numbers(self, word) :
-        try :
+    @staticmethod
+    def _erase_short_length(word):
+        if len(word) <= 1:
+            word = ""
+        return word
+
+    @staticmethod
+    def _try_convert_number(word):
+        try:
             return num2words(int(word))
-        except :
+        except ValueError:  # catching only errors from int(word)
             return word

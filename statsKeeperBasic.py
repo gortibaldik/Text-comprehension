@@ -1,4 +1,3 @@
-from textblob import TextBlob
 import math
 import os   
 

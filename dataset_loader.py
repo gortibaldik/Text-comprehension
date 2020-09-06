@@ -1,64 +1,78 @@
 # loader of custom data from dataset : http://archives.textfiles.com/stories.zip
 # I got in in ./test_files/stories
 
-# following tutorial from https://towardsdatascience.com/tf-idf-for-document-ranking-from-scratch-in-python-on-real-world-dataset-796d339a4089
+# following tutorial from
+# https://towardsdatascience.com/tf-idf-for-document-ranking-from-scratch-in-python-on-real-world-dataset-796d339a4089
 
 
 import os
+import io
 import re
-import urllib.request
+import urllib.request as url_request
 import zipfile
 import sys
-from pathlib import Path, PurePosixPath
-from collections import namedtuple as nt
+from collections import namedtuple
 
-# file_names - dictionary of filenames
-# text_title_tuples - dictionary { path : text_title_tuple }
 
-class Dataset :
+class Dataset:
     _URL = "http://archives.textfiles.com/stories.zip"
+    _INDEX_NAME = "index.html"
+    _NAMED_TUPLE = namedtuple("document", ["title", "text"])
 
     @property
-    def file_names(self) :
-        return self._fns
+    def texts(self):
+        return self._text_dictionary
 
     @property
-    def text_title_tuples(self) :
-        return self._tts
+    def show_errors(self):
+        return self._show_errors
 
-    def __init__(self, relativePathToStories = 'test_files\\stories') :
-        # next step - dataset will download stories.zip and with zipfile it'll extract all the needed files
-        path = os.path.basename(self._URL)
-        if not os.path.exists(path) :
-            print("Downloading dataset {}...".format(path), file=sys.stderr)
-            urllib.request.urlretrieve(self._URL, filename=path)
-        
-        with zipfile.ZipFile(path, "r") as zip_file :
-            index_files = [ file_name for file_name in zip_file.namelist() if os.path.basename(file_name) == "index.html"]
+    @show_errors.setter
+    def show_errors(self, value):
+        self._show_errors = value
 
-            self._fns = {}
-            self._tts = {} # text_title_tuple
-            for index_file in index_files :
-                with zip_file.open(index_file, "r") as i_f :
-                    indices = i_f.read().decode("utf-8").strip()
-                    
-                file_names = re.findall('><A HREF="(.*)">[^<]*</A> ', indices)
-                file_titles = re.findall('<BR><TD> (.*)\n', indices)
+    def __init__(self):
+        # downloading dataset and unzipping it
+        # removing prefix and extension
+        dir_name = os.path.splitext(os.path.basename(self._URL))[0]
+        if not os.path.isdir(dir_name):
+            print("Downloading dataset {}...".format(dir_name), file=sys.stderr)
+            with url_request.urlopen(self._URL) as requested:
+                with zipfile.ZipFile(io.BytesIO(requested.read())) as zip_file:
+                    zip_file.extractall()
 
-                if len(file_names) != len(file_titles) :
-                    raise Exception("len(file_names) != len(file_titles)")
+        # the directory stories is included in subdirs of stories
+        subdirs = ["stories"] + [os.path.join(dir_name, d) for subdir in os.walk(dir_name)
+                                 for d in subdir[1]]
+        self._show_errors = False
+        self._text_dictionary = {}
+        correct = incorrect =0
+        for subdir in subdirs:
+            index_name = os.path.join(subdir, self._INDEX_NAME)
+            if not os.path.exists(index_name):
+                raise Exception("{} not present in {} -- directory corrupted !"
+                                .format(self._INDEX_NAME, subdir))
 
-                ttt = nt("text_title_tuple", ["text", "title"])
-                path_index_file = Path(index_file)
-                folder = path_index_file.parents[0]
-                print("current folder : {}".format(folder))
-                for file_name, title in zip(file_names, file_titles) :
-                    path = PurePosixPath(folder / file_name)
-                    self._fns[path] =  title
-                    try :
-                        with zip_file.open(str(path), "r") as file :
-                            to_insert = ttt._make([file.read().decode("iso-8859-1"), title])
-                    except :
+            # extract the names of the documents and their titles
+            with open(index_name, 'r') as index_file :
+                text = index_file.read()
+                file_names = re.findall('><A HREF="(.*)">[^<]*</A> ', text)
+                file_titles = re.findall('<BR><TD> (.*)\n', text)
+
+            if len(file_names) != len(file_titles) :
+                raise Exception("len(file_names) != len(file_titles) -- directory corrupted !")
+
+            # extract texts from specified paths
+            for file_name, title in zip(file_names, file_titles):
+                path = os.path.join(subdir, file_name)
+                try :
+                    with open(path, 'r') as file:
+                        to_insert = file.read().strip()
+                        self._text_dictionary[path] = Dataset._NAMED_TUPLE._make([title, to_insert])
+                    correct += 1
+                except:
+                    if self.show_errors:
                         print("ERROR IN DECODING {}".format(path))
+                    incorrect += 1
 
-                    self._tts[str(path)] = to_insert
+        print("Statistics of loading : correct : {}\tincorrect : {}".format(correct, incorrect))
