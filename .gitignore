@@ -5,8 +5,8 @@ venv/
 # do not include anything from test_files directory
 test_files/
 
-# do not include downloaded zip archives
-*.zip
+# do not include downloaded files
+stories/
 
 # do not include __pycache__
 __pycache__/
