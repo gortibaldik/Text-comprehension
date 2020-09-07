@@ -1,35 +1,34 @@
 # Keyword extraction using TF-IDF
+- this little library shows some results using TF-IDF on a real word dataset
+- the results are summarized in ```MainNotebook.ipynb```
 
 - module ```base.py```
-	- the main module for testing functionality of tf-idf on dataset
+	- shows how ```TF-IDF``` can be used for querying the dataset
+	- utilizes 2 methods : ```matching score``` and ```cosine similarity```
+
 - module ```dataset_loader.py```
-	- not finalized yet, at mean time it'll implement download and processing of dataset from http://archives.textfiles.com/stories.zip
-	right now you need to specify location of stories.zip file on your disc in constructor of ```Dataset``` class
+	- downloads [the real word dataset](http://archives.textfiles.com/stories.zip)
+	- unzips the file and creates new directories storing all the documents
+
 - module ```document_preprocessor.py```
 	- main module for text preprocessing
 	- with use of libraries : ```nltk```, ```num2words```, ```numpy``` performs basic text preprocessing steps such as 
 		- lowercasing
+		- removing punctuation
+		- removing apostrophes
+		- removing single-letter words
 		- removing stop words
 		- stemming
-- module ```document_vectors.py```
-	- loads preprocessed text and creates tf_idf stats for each document loaded
-	- inner class ```Document``` holding stats for each document separately
-- module ```statsKeeperBasic.py```
-- Basic module providing tools for key-word extraction. Doesn't use any NLP tools only statistics. No stemming, no lemmatization.
-- class ```StatsKeeperBasic```
-	- inner class ```Document``` 
-		-properties :
-		- ```text```
-		- ```name```
-		- ```term_frequencies``` - sorted list of number of occurencies of each distinct word
-		- ```normalized_tfs``` - same as term_frequencies, each term divided by number of all words
-		- ```tf_idfs``` - normalized_tfs * inverse_document_frequencies 
-			calculated on the fly by StatsKeeperBasic
-	- properties :
-	- ```documents```
-	- ```wordDFs``` - as documents are loaded into StatsKeeperBasic we keep track of all distinct words in
-		documents and counts of number of documents they appeared in
-	- ```wordIDFs``` - inverse document frequencies calculated on the fly similary to ```wordDFs```
+		- normalizing numbers to one uniform format
+	- it also gives user a possibility of saving all the changes on the disc, which may save 
+	time during next preprocessing
 
-	methods :
-	- ```load_document```- loads document and recalculates all the necessary statistics  
+- module ```document_vectors.py``` with class ```StatsKeeper```
+	- loads preprocessed text and incrementally holds the ```word document frequency``` for 
+each word in the corpus
+	- class ```Document``` holding stats for each document separately, namely
+		- ```tf-idf```
+		- ```tf-idf vectorised```
+		- ```tf```
+	- since the class holds all the documents in human readable and also in vectorised form, it is
+possible to use this class for vector-like operations such as computing ```cosine-similarity```
