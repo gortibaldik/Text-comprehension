@@ -28,7 +28,7 @@ class Dataset:
         return self._show_errors
 
     @show_errors.setter
-    def show_errors(self, value):
+    def show_errors(self, value: bool):
         self._show_errors = value
 
     def __init__(self):

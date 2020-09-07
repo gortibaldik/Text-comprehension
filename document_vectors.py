@@ -14,6 +14,14 @@ class StatsKeeper:
             return self._tfs
 
         @property
+        def sorted_term_frequencies(self):
+            return self._sorted_tfs
+
+        @property
+        def sorted_tf_idfs(self):
+            return self._sorted_tf_idfs
+
+        @property
         def tf_idfs(self):
             return self._tf_idfs
 
@@ -22,22 +30,30 @@ class StatsKeeper:
             if self._statsKeeper.compiled:
                 raise Exception("Cannot change tf_idfs of document in an already compiled statsKeeper !")
             self._tf_idfs = value
+            self._sorted_tf_idfs = sorted(value.items(), key=lambda x: x[1], reverse=True)
 
         def __init__(self, title, tfs, stats_keeper):
             self._name = title
             self._tfs = tfs
+            self._sorted_tfs = sorted(tfs.items(), key=lambda x: x[1], reverse=True)
             self._tf_idfs = {}
+            self._sorted_tf_idfs = {}
             self._statsKeeper = stats_keeper
 
     @property
     def compiled(self):
         return self._compiled
 
+    @property
+    def documents(self):
+        return self._documents
+
     def __init__(self, bodyweight: float = 0.3):
         self._bodyweight = bodyweight
         self._documents = {}
         self._wdf = {}
         self._sorted_wdf = {}
+        self._sorted_idfs = {}
         self._compiled = False
 
     # during load of each document the following stats are
@@ -55,10 +71,12 @@ class StatsKeeper:
 
     def compile(self):
         idfs = self._calculate_idfs()
-        for document in self._documents:
+        for document in self._documents.values():
             document.tf_idfs = StatsKeeper._calculate_tfidfs(
                                         idfs,
                                         document.term_frequencies)
+        self._sorted_wdf = sorted(self._wdf.items(), key=lambda x: x[1], reverse=True)
+        self._sorted_idfs = sorted(idfs.items(), key=lambda x: x[1], reverse=True)
 
     def _calculate_document_tfs(self, processed_title, processed_text):
         term_frequency = {}
@@ -80,7 +98,8 @@ class StatsKeeper:
 
         # static class argument _BODYWEIGHT determines how much more
         # important is a token in title than a token outside
-        for term in term_frequency.keys():
+        for token in term_frequency.keys():
+            alpha = 0
             if term_appearance[token] == appearance.title:
                 alpha = 1 - self._bodyweight
             elif term_appearance[token] == appearance.both:
@@ -88,12 +107,13 @@ class StatsKeeper:
             elif term_appearance[token] == appearance.body:
                 alpha = self._bodyweight
 
-            term_frequency[term] = alpha * term_frequency[term] / (len(processed_title) + len(processed_text))
+            term_frequency[token] = alpha * term_frequency[token] / (len(processed_title) + len(processed_text))
         return term_frequency
 
     def _calculate_idfs(self):
         idfs = {}
         for key, value in self._wdf.items():
+            # use normalized version of idf (divided by 1+value to avoid dividing by zero)
             idfs[key] = math.log(len(self._documents) / (1 + value)) + 1
 
         return idfs
