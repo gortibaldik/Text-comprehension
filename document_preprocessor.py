@@ -36,7 +36,7 @@ class DocumentPreprocessor:
     # preprocessing steps specified in the constructor
     # for faster working it may save preprocessed documents
     # to disc (to the same directory as the original dataset)
-    def preprocess_document(self, path, text, title):
+    def preprocess_document(self, path, text, title, save_cached=True):
         # the adequately preprocessed document doesn't exist yet
         if not os.path.exists(self._create_parameters_filename(path)):
             arr = [title, text]
@@ -75,17 +75,21 @@ class DocumentPreprocessor:
 
             arr[n] = item
 
-        # save for future use
+        # save the text for future use
         if len(arr) == 2:
             preprocessed_text = arr[1]
-            with open(self._create_parameters_filename(path), 'w') as file:
-                for w in preprocessed_text: file.write(w)
+            if save_cached:
+                with open(self._create_parameters_filename(path), 'w') as file:
+                    for w in preprocessed_text: file.write(w)
+
         # if the text is already saved, load it from disc
         else:
             with open(self._create_parameters_filename(path), 'r') as file:
                 preprocessed_text = file.read()
+
         preprocessed_title = arr[0]
-        return DocumentPreprocessor._NAMED_TUPLE._make([word_tokenize(preprocessed_title), word_tokenize(preprocessed_text)])
+        return DocumentPreprocessor._NAMED_TUPLE._make([word_tokenize(preprocessed_title),
+                                                        word_tokenize(preprocessed_text)])
 
     # stem all the words in the text
     def _stem(self, text):

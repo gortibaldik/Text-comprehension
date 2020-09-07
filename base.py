@@ -1,8 +1,11 @@
 from dataset_loader import Dataset
 from document_preprocessor import DocumentPreprocessor
 from document_vectors import StatsKeeper
-import random
-# from num2words import num2words
+
+'''
+Little simple showcase app showing the differences in searches
+using "matching score" and "cosine similarity"
+'''
 
 dataset = Dataset()
 print("DATASET LOADED !")
@@ -23,30 +26,18 @@ print("DATASET PREPARED FOR COMPILATION !")
 statsKeeper.compile()
 print("DATASET COMPILED !")
 
-print("Word document frequencies:")
-for rank, (token, frequency) in enumerate(statsKeeper._sorted_wdf[:10]):
-    print("{}. {} : {}".format(rank + 1, token, frequency))
+while 1 :
+    print("\nType \"__exit__\" if you want to leave.")
+    query = input("What are you searching for ? : ")
+    if query == "__exit__":
+        break
+    preprocessed_query = documentPreprocessor.preprocess_document(text=query, title="query", path="", save_cached=False)
+    results = statsKeeper.query_matching_score(preprocessed_query.text)
+    print("BEST MATCHES ACCORDING TO MATCHING SCORE: ")
+    for rank, (title, score) in enumerate(results[:5]) :
+        print("{}. {} : {}".format(rank+1, title, score))
 
-print("Inverse document frequencies:")
-for rank, (token, frequency) in enumerate(statsKeeper._sorted_idfs[:10]):
-    print("{}. {} : {}".format(rank + 1, token, frequency))
-
-print("Now we will pick random document from the corpus")
-_, (title, text) = random.choice(list(dataset.texts.items()))
-print("TITLE : {}".format(title))
-print("\n\n\nTEXT : {}".format(text))
-
-print("Most frequent tokens: ")
-for rank, (token, frequency) in enumerate(statsKeeper.documents[title].sorted_term_frequencies[:10]):
-    print("{}. {} : {}".format(rank + 1, token, frequency))
-
-print("Most valuable tokens:")
-for rank, (token, frequency) in enumerate(statsKeeper.documents[title].sorted_tf_idfs[:10]):
-    print("{}. {} : {}".format(rank + 1, token, frequency))
-# while 1 :
-#     query = input("What are you searching for ? : ")
-#     preprocessed_query = documentPreprocessor.preprocess_document(text=query, title="query")
-#     results = statsKeeper.query_matching_score(preprocessed_query.p_text)
-#     print("BEST MATCHES : ")
-#     for rank, (title, score) in enumerate(results[:5]) :
-#         print("{}. {} : {}".format(rank+1, title, score))
+    results = statsKeeper.query_cosine_similarity(preprocessed_query.text)
+    print("BEST MATCHES ACCORDING TO COSINE SIMILARITY: ")
+    for rank, (title, score) in enumerate(results[:5]) :
+        print("{}. {} : {}".format(rank+1, title, score))

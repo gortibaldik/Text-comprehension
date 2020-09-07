@@ -10,3 +10,5 @@ stories/
 
 # do not include __pycache__
 __pycache__/
+
+.ipynb_checkpoints/
