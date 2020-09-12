@@ -16,7 +16,10 @@ class Attention(tf.keras.Model):
         hidden = tf.expand_dims(hidden, axis=-2)
         features = tf.expand_dims(features, axis=-3)
         score = tf.nn.tanh(self.W1(features) + self.W2(hidden))
-        attention_weights = tf.nn.softmax(self.V(score), axis=1)
+
+        # these are my modifications, don't know how the real 
+        # attention mechanism behaves
+        attention_weights = tf.nn.softmax(self.V(score), axis=2)
         context_vector = attention_weights * features
 
         # this is my modification, I think it's better to sum
