@@ -1,13 +1,9 @@
 import re
 
+from bs4 import BeautifulSoup
 from nltk.corpus import stopwords
 
 stop_words = set(stopwords.words('english'))
-def text_cleaner(text):
-    to_return = text.lower()
-    to_return = re.sub('"', '', to_return)
-    return to_return
-
 contraction_mapping = {"ain't": "is not", "aren't": "are not","can't": "cannot", "'cause": "because", "could've": "could have", "couldn't": "could not",
 
                            "didn't": "did not", "doesn't": "does not", "don't": "do not", "hadn't": "had not", "hasn't": "has not", "haven't": "have not",
@@ -53,3 +49,21 @@ contraction_mapping = {"ain't": "is not", "aren't": "are not","can't": "cannot",
                            "you'd": "you would", "you'd've": "you would have", "you'll": "you will", "you'll've": "you will have",
 
                            "you're": "you are", "you've": "you have"}
+def text_cleaner(text):
+    to_return = text.lower()
+    to_return = BeautifulSoup(to_return, "lxml").text
+    to_return = re.sub(r'\([^)]*\)', '', to_return)
+    to_return = re.sub('"', '', to_return)
+    to_return = ' '.join([contraction_mapping[t]
+                          if t in contraction_mapping
+                          else t for t in to_return.split(" ")])
+    to_return = re.sub(r"'s\b","",to_return)
+    to_return = re.sub("[^a-zA-Z]", " ", to_return)
+    tokens = [w for w in to_return.split() if not w in stop_words]
+    long_words=[]
+    for i in tokens:
+        if len(i)>=3:                  #removing short word
+            long_words.append(i)
+    return (" ".join(long_words)).strip()
+
+
