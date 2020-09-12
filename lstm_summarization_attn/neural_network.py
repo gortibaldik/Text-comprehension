@@ -11,9 +11,15 @@ import numpy as np
 class SummarizationModel():
     def __init__(self,
                  use_attn=False,
-                 use_bidir=False):
+                 use_bidir=False,
+                 encoder_layers=3,
+                 dropout=0.0,
+                 recurrent_dropout=0.0):
         self.use_attn = use_attn
         self.use_bidir = use_bidir
+        self.encoder_layers = encoder_layers
+        self.dropout = dropout
+        self.recurrent_dropout = recurrent_dropout
 
     def create(self,dataset):
         # creating model
@@ -26,48 +32,52 @@ class SummarizationModel():
                                       trainable=True)(encoder_inputs)
         
         if self.use_bidir:
-            encoder_bi_LSTM_1 = Bidirectional(LSTM(latent_dim,
-                                                   return_sequences=True,
-                                                   return_state=True),
-                                              merge_mode="sum")
-            encoder_output1, _, _, _, _ = encoder_bi_LSTM_1(encoder_embedding)
+            for i in range(self.encoder_layers):
+                encoder_bi_LSTM = Bidirectional(LSTM(latent_dim,
+                                                       return_sequences=True,
+                                                       return_state=True,
+                                                       dropout=self.dropout,
+                                                       recurrent_dropout=self.recurrent_dropout),
+                                                  merge_mode="concat")
+                encoder_outputs, fwd_h, fwd_c, bck_h, bck_c = encoder_bi_LSTM(encoder_embedding
+                                                                                if i == 0
+                                                                                else encoder_outputs)
             
-            encoder_bi_LSTM_2 = Bidirectional(LSTM(latent_dim,
-                                                   return_sequences=True,
-                                                   return_state=True),
-                                              merge_mode="sum")
-            encoder_output2, _, _, _, _ = encoder_bi_LSTM_2(encoder_output1)
-            
-            encoder_bi_LSTM_3 = Bidirectional(LSTM(latent_dim,
-                                                   return_sequences=True,
-                                                   return_state=True),
-                                              merge_mode="sum")
-            encoder_outputs, fwd_h, fwd_c, bck_h, bck_c = encoder_bi_LSTM_3(encoder_embedding)
-            state_h = Add()([fwd_h, bck_h])
-            state_c = Add()([fwd_c, bck_c])
+            state_h = Concatenate()([fwd_h, bck_h])
+            state_c = Concatenate()([fwd_c, bck_c])
           
         else:
-            encoder_LSTM_1 = LSTM(latent_dim, return_sequences=True, return_state=True)
-            encoder_output1, state_h1, state_c1 = encoder_LSTM_1(encoder_embedding)
-
-            encoder_LSTM_2 = LSTM(latent_dim, return_sequences=True, return_state=True)
-            encoder_output2, state_h2, state_c2 = encoder_LSTM_2(encoder_output1)
-
-            encoder_LSTM_3 = LSTM(latent_dim, return_sequences=True, return_state=True)
-            encoder_outputs, state_h, state_c = encoder_LSTM_3(encoder_output2)
+            for i in range(self.encoder_layers):
+                encoder_LSTM = LSTM(latent_dim,
+                                    return_sequences=True,
+                                    return_state=True,
+                                    dropout=self.dropout,
+                                    recurrent_dropout=self.recurrent_dropout)
+                encoder_outputs, state_h, state_c = encoder_LSTM(encoder_embedding if i == 0 
+                                                                   else encoder_outputs)
 
         # Decoder
         decoder_inputs = Input(shape=(None,))
         decoder_embedding_layer = Embedding(dataset.label_vocab_size, latent_dim, trainable=True)
         decoder_embedding = decoder_embedding_layer(decoder_inputs)
-
-        decoder_LSTM = LSTM(latent_dim, return_sequences=True, return_state=True)
+        if self.use_bidir:
+            decoder_LSTM = LSTM(latent_dim*2,
+                                return_sequences=True,
+                                return_state=True,
+                                dropout=self.dropout,
+                                recurrent_dropout=self.recurrent_dropout)
+        else:
+            decoder_LSTM = LSTM(latent_dim,
+                                return_sequences=True,
+                                return_state=True,
+                                dropout=self.dropout,
+                                recurrent_dropout=self.recurrent_dropout)
         decoder_outputs, decoder_state_h, decoder_state_c = decoder_LSTM(decoder_embedding,
                                                                         initial_state=[state_h, state_c])
        
         if self.use_attn:
-            attention_layer = AdditiveAttention()
-            context_vector = attention_layer([decoder_outputs, encoder_outputs])
+            attention_layer = Attention(latent_dim)
+            context_vector, _ = attention_layer(encoder_outputs, decoder_outputs)
             decoder_concat_input = Concatenate()([decoder_outputs, context_vector])
             decoder_Dense = TimeDistributed(Dense(dataset.label_vocab_size, activation='softmax'))
             decoder_outputs = decoder_Dense(decoder_concat_input)
@@ -78,7 +88,6 @@ class SummarizationModel():
 
         # whole model, which is used only for training, not for inference
         self.model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
-        self.model.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy')
 
         # encoder model, used only for inference with weights trained in training model
         # model without attention
@@ -89,14 +98,17 @@ class SummarizationModel():
 
         # decoder model, used only for inference with weights trained in training model
         decoder_embedding_inference = decoder_embedding_layer(decoder_inputs)
-        decoder_input_state_h = Input(shape=(latent_dim,))
-        decoder_input_state_c = Input(shape=(latent_dim,))
+
+        state_dim = latent_dim * 2 if self.use_bidir else latent_dim
+
+        decoder_input_state_h = Input(shape=(state_dim,))
+        decoder_input_state_c = Input(shape=(state_dim,))
         dec_outputs, dec_state_h, dec_state_c = decoder_LSTM(decoder_embedding_inference,
                                                             initial_state=[decoder_input_state_h,
                                                                             decoder_input_state_c])
         if self.use_attn:
-            decoder_input_hidden_states = Input(shape=(dataset.max_len_datapoint, latent_dim))
-            context_inference = attention_layer([dec_outputs, decoder_input_hidden_states])
+            decoder_input_hidden_states = Input(shape=(dataset.max_len_datapoint, state_dim))
+            context_inference, _ = attention_layer(decoder_input_hidden_states, dec_outputs)
             decoder_inference_concat = Concatenate()([dec_outputs, context_inference])
             dec_outputs = decoder_Dense(decoder_inference_concat)
             self.decoder = Model([decoder_inputs,
@@ -110,7 +122,7 @@ class SummarizationModel():
             self.decoder = Model([decoder_inputs, decoder_input_state_h, decoder_input_state_c],
                                  [dec_outputs, dec_state_h, dec_state_c])
 
-    def train(self, dataset, batch_size=64, epochs=10):    
+    def train(self, dataset, batch_size=128, epochs=10):    
     
         # teacher enforcing mode
         x = [dataset.datapoint_train, dataset.label_train[:, :-1]]
@@ -123,6 +135,7 @@ class SummarizationModel():
                                            dataset.label_test.shape[1], 1)[:,1:]
 
         early_stopping = EarlyStopping(monitor='val_loss', mode='min', verbose=1)
+        self.model.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy')
         history=self.model.fit(x, 
                           y,
                           epochs=epochs,
@@ -159,11 +172,22 @@ class SummarizationModel():
         return review
 
 
-    def save(self):
+    def save(self, model_file, encoder_file, decoder_file):
 
         def save_model(name, model_):
             model_.save(name+".h5")
         # saving trained model
-        save_model("model", self.model)
-        save_model("encoder", self.encoder)
-        save_model("decoder", self.decoder)
+        save_model(model_file, self.model)
+        save_model(encoder_file, self.encoder)
+        save_model(decoder_file, self.decoder)
+
+    # loads all 3 parts of the model
+    # there is problem with shared weights which will rest unresolved
+    # although, the solution is rather simple : https://stackoverflow.com/questions/57812324/saving-and-loading-multiple-models-with-the-same-graph-in-tensorflow-functional
+    def load(self, model_file, encoder_file, decoder_file):
+        self.model = keras.models.load_model(model_file)
+        self.encoder = keras.models.load_model(encoder_file)
+        self.decoder = keras.models.load_model(decoder_file)
+
+    def load_legacy(self, model_name, encoder_name, decoder_name):
+        print("legacy load is unsupported yet")
