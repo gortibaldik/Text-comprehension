@@ -1,6 +1,13 @@
+# Summarization of the text using ```RNN```
+- comparing of several methods and several neural network architectures on the [Amazon Fine Foods Review dataset](https://www.kaggle.com/snap/amazon-fine-food-reviews)
+- the results are summarized in ```Main.ipynb```
+- the code needed is in the package ```text_classifiers```
+- using [pytextrank](https://github.com/DerwenAI/pytextrank)
+
 # Keyword extraction using TF-IDF
-- this little library shows some results using TF-IDF on a real word dataset
-- the results are summarized in ```MainNotebook.ipynb```
+- this little library shows some results using TF-IDF on a real word [dataset](http://archives.textfiles.com/stories.zip
+)
+- the results are summarized in ```TF-IDFNotebook.ipynb```
 
 - module ```base.py```
 	- shows how ```TF-IDF``` can be used for querying the dataset
