@@ -2,8 +2,8 @@ from tensorflow.keras.layers import Input, Embedding, LSTM, Dense, Concatenate, 
                                     AdditiveAttention, Bidirectional, Add
 from tensorflow.keras.models import Model, model_from_json
 from tensorflow.keras.callbacks import EarlyStopping
-from dataset_loader import Dataset
-from attention import Attention
+from .dataset_loader import Dataset
+from .attention import Attention
 
 import json
 import numpy as np

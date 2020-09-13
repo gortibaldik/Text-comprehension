@@ -74,7 +74,7 @@ class StatsKeeper:
     # collected : term frequencies of each token
     # the following stats are incremented :
     # document frequencies of each token in the document
-    def load_document(self, title, processed_title, processed_text):
+    def load_document(self, title="", processed_title="", processed_text=""):
         if self._compiled:
             raise Exception("Cannot load new documents to already compiled stats keeper!")
 

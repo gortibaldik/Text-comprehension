@@ -6,10 +6,11 @@ import json
 
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from dataset_cleaning import contraction_mapping, text_cleaner
+from .dataset_cleaning import text_cleaner
 from sklearn.model_selection import train_test_split
 
 class Dataset:
+    _ORIGINAL_CSV = "Reviews.csv"
     _PREPARED_CSV = "Reviews_prepared.csv"
     _PREPARED_TOKEN_DATA = "token_data_prepared.json"
     _PREPARED_TOKEN_LABEL = "token_label_prepared.json"
@@ -22,7 +23,8 @@ class Dataset:
         if os.path.exists(Dataset._PREPARED_CSV):
             self._data = pd.read_csv(Dataset._PREPARED_CSV)
             return False
-        self._data = pd.read_csv("Reviews.csv", nrows=1000)
+        
+        self._data = pd.read_csv(Dataset._ORIGINAL_CSV, nrows=1000)
         self._data.drop_duplicates(subset=['Text'], inplace=True)
         self._data.dropna(axis=0, inplace=True)  # drop all the rows containing NA values
         return True

@@ -12,3 +12,12 @@ stories/
 __pycache__/
 
 .ipynb_checkpoints/
+
+# remove shell scripts
+*.sh
+
+# remove everything loaded by dataset_loader
+*.csv
+*.json
+*.h5
+*.npy

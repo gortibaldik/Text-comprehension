@@ -3,10 +3,10 @@ from neural_network import SummarizationModel
 
 dataset = Dataset()
 print("Dataset loaded!")
-model = SummarizationModel(use_attn=True, use_bidir=True)
+model = SummarizationModel(use_bidir=True, use_attn=True)
 model.create(dataset)
+print("Model created!")
 model.train(dataset)
-model.save()
 
 def seq2summary(input_seq):
     summary=''
