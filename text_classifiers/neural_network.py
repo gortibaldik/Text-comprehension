@@ -171,6 +171,9 @@ class SummarizationModel():
 
         return review
 
+    def create_review_beam(self, dataset, sequence):
+
+
 
     def save(self, model_file, encoder_file, decoder_file):
 
