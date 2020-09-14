@@ -21,3 +21,7 @@ __pycache__/
 *.json
 *.h5
 *.npy
+
+# remove outputs of the neural nets which are used only for presentations
+# and are represented only partially in the notebooks
+*.txt
